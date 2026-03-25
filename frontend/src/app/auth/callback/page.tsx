@@ -1,37 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 export default function Callback() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Слушаем изменение сессии
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (session) {
-          router.replace("/dashboard"); // редирект после успешного логина
-        }
-      }
-    );
+    const handleAuth = async () => {
+      const { error } = await supabase.auth.exchangeCodeForSession(
+        window.location.href
+      );
 
-    // Проверяем сессию сразу на случай, если токен уже в localStorage
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (!error) {
         router.replace("/dashboard");
       } else {
-        setLoading(false); // нет сессии — остаёмся на странице
+        console.error("Auth error:", error.message);
+        router.replace("/login");
       }
-    });
-
-    // Чистим подписку при размонтировании
-    return () => {
-      listener.subscription.unsubscribe();
     };
+
+    handleAuth();
   }, []);
 
-  return <p>{loading ? "Logging in..." : "Redirecting..."}</p>;
+  return <p>Logging in...</p>;
 }
