@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+}
+
+enum WeekType {
+  ODD
+  EVEN
+  BOTH
+}
+
+enum AssignmentStatusEnum {
+  NOT_STARTED
+  IN_PROGRESS
+  DONE
+}
+
+enum NotificationType {
+  NEW_ASSIGNMENT
+  DEADLINE_APPROACHING
+  SCHEDULE_CHANGED
+}
+
+enum CertificateType {
+  STUDY_CERTIFICATE
+  CUSTOM_CERTIFICATE
+}
+
+enum CertificateStatus {
+  PENDING
+  READY
+}
+
+model Group {
+  id          String       @id @default(uuid())
+  name        String
+  course      Int
+  users       User[]
+  lessons     Lesson[]
+  assignments Assignment[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String?
+  role         Role     @default(STUDENT)
+  groupId      String?
+  createdAt    DateTime @default(now())
+
+  group               Group?               @relation(fields: [groupId], references: [id])
+  lessonsTeaching     Lesson[]
+  assignmentsCreated  Assignment[]
+  assignmentStatuses  AssignmentStatus[]
+  attendanceRecords   AttendanceRecord[]
+  attendanceCodes     AttendanceCode[]
+  certificateRequests CertificateRequest[]
+  notifications       Notification[]
+}
+
+model Lesson {
+  id          String   @id @default(uuid())
+  subjectName String
+  teacherId   String
+  groupId     String
+  room        String
+  startTime   DateTime
+  endTime     DateTime
+  dayOfWeek   Int
+  weekType    WeekType @default(BOTH)
+
+  teacher         User             @relation(fields: [teacherId], references: [id])
+  group           Group            @relation(fields: [groupId], references: [id])
+  attendanceCodes AttendanceCode[]
+}
+
+model Assignment {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  teacherId   String
+  groupId     String
+  deadline    DateTime
+  createdAt   DateTime @default(now())
+
+  teacher  User               @relation(fields: [teacherId], references: [id])
+  group    Group              @relation(fields: [groupId], references: [id])
+  statuses AssignmentStatus[]
+}
+
+model AssignmentStatus {
+  id           String               @id @default(uuid())
+  assignmentId String
+  studentId    String
+  status       AssignmentStatusEnum @default(NOT_STARTED)
+  updatedAt    DateTime             @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User       @relation(fields: [studentId], references: [id])
+
+  @@unique([assignmentId, studentId])
+}
+
+model AttendanceCode {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  lessonId  String
+  teacherId String
+  expiresAt DateTime
+  isActive  Boolean  @default(true)
+
+  lesson           Lesson             @relation(fields: [lessonId], references: [id])
+  teacher          User               @relation(fields: [teacherId], references: [id])
+  attendanceRecord AttendanceRecord[]
+}
+
+model AttendanceRecord {
+  id               String   @id @default(uuid())
+  studentId        String
+  lessonId         String
+  attendanceCodeId String
+  markedAt         DateTime @default(now())
+
+  student        User           @relation(fields: [studentId], references: [id])
+  attendanceCode AttendanceCode @relation(fields: [attendanceCodeId], references: [id])
+
+  @@unique([studentId, lessonId])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model CertificateRequest {
+  id        String            @id @default(uuid())
+  studentId String
+  type      CertificateType
+  status    CertificateStatus @default(PENDING)
+  comment   String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  student User @relation(fields: [studentId], references: [id])
+}
