@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto } from './auth.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -19,17 +19,17 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  // Вызывается из /auth/callback на фронтенде после Google OAuth
+  // Принимает токен Supabase, создаёт/находит пользователя, возвращает наш JWT
+  @Post('google/token')
+  googleToken(@Body() body: { access_token: string; user: { email: string; name: string } }) {
+    return this.authService.handleGoogleToken(body.user);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   getMe(@Req() req) {
     return this.authService.getMe(req.user.id);
-  }
-
-  // Google OAuth is handled via Supabase on the frontend
-  // These endpoints exist as placeholders for custom OAuth flow if needed
-  @Get('google')
-  googleAuth() {
-    return { message: 'Use Supabase Google OAuth from frontend' };
   }
 }

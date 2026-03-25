@@ -39,20 +39,21 @@ export class AuthService {
     });
   }
 
-  async handleGoogleOAuth(profile: any) {
-    const email = profile.emails[0].value;
-    let user = await this.prisma.user.findUnique({ where: { email } });
+  // Вызывается после Google OAuth — находит или создаёт пользователя по email
+  async handleGoogleToken(googleUser: { email: string; name: string }) {
+    let user = await this.prisma.user.findUnique({ where: { email: googleUser.email } });
 
     if (!user) {
       user = await this.prisma.user.create({
         data: {
-          name: profile.displayName,
-          email,
+          name: googleUser.name || googleUser.email,
+          email: googleUser.email,
           role: 'STUDENT',
           passwordHash: null,
         },
       });
     }
+
     return this.signToken(user);
   }
 
